@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VediRaksha - Worker Safety & Factory Monitoring System</title>
+    <style>
+        :root {
+            --navy-dark: #0F172A;
+            --navy-card: #1E293B;
+            --navy-border: #334155;
+            --teal-primary: #0284C7;
+            --teal-light: #38BDF8;
+            --green-safe: #10B981;
+            --amber-warn: #F59E0B;
+            --red-danger: #EF4444;
+            --text-light: #F8FAFC;
+            --text-muted: #94A3B8;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        body {
+            background-color: var(--navy-dark);
+            color: var(--text-light);
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+            padding-bottom: 70px;
+        }
+
+        /* Top Emergency Ticker */
+        .emergency-ticker {
+            background: linear-gradient(90deg, #991B1B, #EF4444, #991B1B);
+            color: white;
+            padding: 8px 16px;
+            font-size: 0.85rem;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            overflow: hidden;
+            white-space: nowrap;
+            border-bottom: 1px solid rgba(255,255,255,0.2);
+        }
+
+        .ticker-content {
+            display: inline-block;
+            animation: marquee 18s linear infinite;
+        }
+
+        @keyframes marquee {
+            0% { transform: translateX(100%); }
+            100% { transform: translateX(-100%); }
+        }
+
+        /* App Header */
+        header {
+            background-color: #090D16;
+            border-bottom: 1px solid var(--navy-border);
+            padding: 12px 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .brand-logo {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, #EF4444, #F59E0B);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 22px;
+            font-weight: bold;
+            color: white;
+            box-shadow: 0 0 10px rgba(239, 68, 68, 0.4);
+        }
+
+        .brand-text h1 {
+            font-size: 1.15rem;
+            font-weight: 800;
+            color: #FFFFFF;
+        }
+
+        .brand-text p {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .btn-sos {
+            background: linear-gradient(135deg, #EF4444, #991B1B);
+            color: white;
+            font-weight: bold;
+            padding: 8px 16px;
+            border-radius: 20px;
+            border: none;
+            cursor: pointer;
+            box-shadow: 0 0 12px rgba(239, 68, 68, 0.5);
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.04); }
+            100% { transform: scale(1); }
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            width: 100%;
+            padding: 20px;
+        }
+
+        /* Live Emergency Tracker Banner */
+        .emergency-banner {
+            background: linear-gradient(135deg, rgba(239, 68, 68, 0.2), rgba(245, 158, 11, 0.2));
+            border: 1px solid var(--red-danger);
+            border-radius: 14px;
+            padding: 16px;
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        .waveform-bar {
+            display: flex;
+            align-items: center;
+            gap: 3px;
+            height: 24px;
+            margin: 10px 0;
+        }
+
+        .wave-line {
+            width: 4px;
+            background: var(--red-danger);
+            border-radius: 2px;
+            animation: waveAnim 0.8s ease-in-out infinite alternate;
+        }
+
+        @keyframes waveAnim {
+            0% { height: 4px; }
+            100% { height: 22px; }
+        }
+
+        .card {
+            background-color: var(--navy-card);
+            border: 1px solid var(--navy-border);
+            border-radius: 14px;
+            padding: 20px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+            margin-bottom: 20px;
+        }
+
+        .card-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 14px;
+        }
+
+        .card-title {
+            font-size: 1.05rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn {
+            background-color: var(--teal-primary);
+            color: white;
+            border: none;
+            padding: 10px 18px;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: opacity 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .btn:hover { opacity: 0.9; }
+        .btn-outline { background: transparent; border: 1px solid var(--navy-border); color: var(--text-light); }
+        .btn-success { background: var(--green-safe); color: white; }
+        .btn-danger { background: var(--red-danger); color: white; }
+
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-color: rgba(0,0,0,0.8);
+            z-index: 200;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .modal {
+            background-color: var(--navy-card);
+            border: 1px solid var(--navy-border);
+            border-radius: 16px;
+            max-width: 550px;
+            width: 100%;
+            padding: 24px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.6);
+        }
+
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+
+        nav.bottom-nav {
+            position: fixed;
+            bottom: 0; left: 0; right: 0;
+            background-color: #090D16;
+            border-top: 1px solid var(--navy-border);
+            display: flex;
+            justify-content: space-around;
+            padding: 8px 0;
+            z-index: 100;
+        }
+
+        .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            color: var(--text-muted);
+            background: none;
+            border: none;
+            font-size: 0.72rem;
+            cursor: pointer;
+            padding: 6px 12px;
+            border-radius: 8px;
+        }
+
+        .nav-item.active { color: var(--teal-light); background: rgba(2, 132, 199, 0.15); }
+    </style>
+</head>
+<body>
+
+    <!-- Top Emergency Ticker -->
+    <div class="emergency-ticker">
+        <span>🚨 LIVE ALARM TICKER:</span>
+        <div class="ticker-content" id="ticker-text">
+            Sivakasi Plant Safety Network Active • Fire Control Direct Line: 9500847066 (Toll-free 101) • Assembly Point Alpha Ready
+        </div>
+        <button class="btn btn-success" style="padding: 2px 10px; font-size: 0.75rem;" onclick="acknowledgeNoticed()">✔ Noticed</button>
+    </div>
+
+    <!-- Header -->
+    <header>
+        <div class="brand">
+            <div class="brand-logo">🛡️</div>
+            <div class="brand-text">
+                <h1>VediRaksha</h1>
+                <p>Sivakasi Industrial Safety & Evacuation ERP</p>
+            </div>
+        </div>
+        <div class="header-actions">
+            <a href="alert_console.html" class="btn btn-outline" style="text-decoration:none; display:inline-flex; align-items:center; gap:6px; background: rgba(56, 189, 248, 0.15); color: var(--teal-light); border: 1px solid var(--teal-light); padding: 8px 14px; border-radius: 8px; font-weight: bold; font-size: 0.85rem;">📡 Alert Escalation Console</a>
+            <button class="btn btn-danger" onclick="triggerFullEmergency()">🚨 SOS Alarm</button>
+        </div>
+    </header>
+
+    <div class="container">
+
+        <!-- Live Emergency Dispatch Tracker Banner -->
+        <div class="emergency-banner" id="live-emergency-banner">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <span style="font-size: 1.5rem;">🚨</span>
+                    <div>
+                        <strong style="color: var(--red-danger); font-size: 1.1rem;">CRITICAL EVACUATION ALARM ACTIVE</strong>
+                        <p style="font-size: 0.8rem; color: var(--text-muted);">Sivakasi Fire Unit 2 Dispatched • ETA: ~3 mins • Distance: 1.8 km</p>
+                    </div>
+                </div>
+                <button class="btn btn-success" onclick="acknowledgeNoticed()">✔ Noticed (Stop Alarm)</button>
+            </div>
+
+            <!-- Audio Visualizer Waveform -->
+            <div style="background: rgba(0,0,0,0.3); padding: 10px; border-radius: 8px; margin-top: 10px;">
+                <div style="display: flex; justify-content: space-between; font-size: 0.75rem; color: var(--text-muted);">
+                    <span>Audio Visualizer (Dual-Tone 620Hz - 980Hz Horn)</span>
+                    <span id="siren-status">SIREN FIRING (115 dB)</span>
+                </div>
+                <div class="waveform-bar" id="waveform-container">
+                    <!-- Dynamic wave lines generated via JS -->
+                </div>
+                <div style="display: flex; gap: 10px; align-items: center; margin-top: 8px;">
+                    <span style="font-size: 0.75rem;">Volume:</span>
+                    <input type="range" id="siren-volume" min="0" max="100" value="80" style="flex:1;" onchange="updateVolume(this.value)">
+                    <button class="btn btn-outline" style="font-size: 0.75rem; padding: 4px 8px;" onclick="toggleSirenMute()">Mute Audio</button>
+                    <button class="btn btn-outline" style="font-size: 0.75rem; padding: 4px 8px;" onclick="openSmsReceiptInspector()">View SMS Receipt</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 1. DASHBOARD TAB -->
+        <div id="tab-dashboard" class="tab-content active">
+
+            <!-- AI Daily Safety Tip Component -->
+            <div class="card" style="border: 1px solid var(--teal-primary);">
+                <div class="card-header">
+                    <span class="card-title">💡 AI Daily Pyrotechnic Safety Tip</span>
+                    <span class="tag tag-safe">PESO RULE 84</span>
+                </div>
+                <p style="font-size: 0.9rem; line-height: 1.5; color: var(--text-light);" id="ai-safety-tip-text">
+                    "Maintain a strict 60%+ relative humidity in powder mixing bays to neutralize electrostatic discharge risks and prevent microsecond flash-fire escalation."
+                </p>
+                <div style="margin-top: 12px; display: flex; gap: 10px;">
+                    <button class="btn btn-outline" style="font-size: 0.8rem;" onclick="refreshDailySafetyTip()">Generate New AI Tip</button>
+                </div>
+            </div>
+
+            <div class="grid-3">
+                <div class="card">
+                    <div class="card-header"><span class="card-title">⏱️ Shift Status</span></div>
+                    <div class="stat-val" id="shift-timer">03:42:15</div>
+                    <div class="stat-desc">Room B-2 (Mixing) • Active</div>
+                </div>
+                <div class="card">
+                    <div class="card-header"><span class="card-title">💰 Wage Accrued</span></div>
+                    <div class="stat-val">₹ 680.00</div>
+                    <div class="stat-desc">₹ 85/hr + Hazard bonus</div>
+                </div>
+                <div class="card">
+                    <div class="card-header"><span class="card-title">👥 Workforce</span></div>
+                    <div class="stat-val">18 / 25</div>
+                    <div class="stat-desc">Biometric verified</div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- SMS Receipt Inspector Modal -->
+    <div id="sms-modal" class="modal-overlay">
+        <div class="modal">
+            <h2>📱 TN Fire Priority Gateway - SMS Receipt</h2>
+            <p style="font-size: 0.85rem; color: var(--text-muted); margin: 10px 0;">
+                Carrier Delivery Receipt confirmed via Airtel Enterprise PRI Gateway.
+            </p>
+            <div style="background: rgba(0,0,0,0.4); padding: 14px; border-radius: 10px; font-family: monospace; font-size: 0.8rem; line-height: 1.5; color: #34D399;">
+                [DELIVERED_SUCCESS] Timestamp: Oct 07, 2026 - 11:42 IST<br>
+                To: Sivakasi Fire Control (9500847066 / 101)<br>
+                CC: Captain V. Sundaram (Safety Lead)<br>
+                Message: "CRITICAL HAZARD DETECTED AT SIVAKASI UNIT 4. ROOM R-101. EMERGENCY DISPATCH REQUIRED IMMEDIATELY."
+            </div>
+            <button class="btn btn-outline" style="width: 100%; margin-top: 15px;" onclick="closeSmsReceiptInspector()">Close Inspector</button>
+        </div>
+    </div>
+
+    <!-- Bottom Nav -->
+    <nav class="bottom-nav">
+        <button class="nav-item active"><span>📊</span> Dashboard</button>
+        <button class="nav-item"><span>🧪</span> Chemicals</button>
+        <button class="nav-item"><span>👥</span> Workforce</button>
+        <button class="nav-item"><span>💰</span> Wages</button>
+        <button class="nav-item"><span>📄</span> Reports</button>
+    </nav>
+
+    <!-- JavaScript Audio & Dispatch Controller -->
+    <script>
+        let audioCtx = null;
+        let osc1 = null;
+        let osc2 = null;
+        let gainNode = null;
+        let isSirenActive = false;
+        let speechSynth = window.speechSynthesis;
+
+        // Generate Waveform Visualizer Bars
+        const waveContainer = document.getElementById('waveform-container');
+        for (let i = 0; i < 35; i++) {
+            const line = document.createElement('div');
+            line.className = 'wave-line';
+            line.style.animationDelay = `${i * 0.05}s`;
+            waveContainer.appendChild(line);
+        }
+
+        function startEmergencySirenAndVoice() {
+            if (isSirenActive) return;
+            isSirenActive = true;
+            document.getElementById('live-emergency-banner').style.display = 'block';
+
+            // Web Audio API Dual-Tone Siren
+            try {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                osc1 = audioCtx.createOscillator();
+                osc2 = audioCtx.createOscillator();
+                gainNode = audioCtx.createGain();
+
+                osc1.type = 'sawtooth';
+                osc2.type = 'sine';
+
+                // Frequency wailing between 620 Hz and 980 Hz
+                const now = audioCtx.currentTime;
+                osc1.frequency.setValueAtTime(620, now);
+                osc2.frequency.setValueAtTime(640, now);
+
+                // LFO frequency sweep simulation
+                setInterval(() => {
+                    if (!isSirenActive || !audioCtx) return;
+                    const t = audioCtx.currentTime;
+                    osc1.frequency.linearRampToValueAtTime(980, t + 0.6);
+                    osc1.frequency.linearRampToValueAtTime(620, t + 1.2);
+                    osc2.frequency.linearRampToValueAtTime(1000, t + 0.6);
+                    osc2.frequency.linearRampToValueAtTime(640, t + 1.2);
+                }, 1200);
+
+                gainNode.gain.setValueAtTime(0.75, now);
+
+                osc1.connect(gainNode);
+                osc2.connect(gainNode);
+                gainNode.connect(audioCtx.destination);
+
+                osc1.start();
+                osc2.start();
+            } catch (e) { console.error(e); }
+
+            // Browser-Native Voice Broadcast
+            if (speechSynth) {
+                const utterance = new SpeechSynthesisUtterance("Emergency warning! Critical pyrotechnic hazard detected at Zone B. Evacuate along anti-static illuminated tracks to Assembly Point Alpha.");
+                utterance.rate = 1.05;
+                utterance.pitch = 1.1;
+                speechSynth.speak(utterance);
+            }
+        }
+
+        function stopEmergencySirenAndVoice() {
+            isSirenActive = false;
+            document.getElementById('live-emergency-banner').style.display = 'none';
+
+            if (audioCtx) {
+                try {
+                    audioCtx.close();
+                } catch (_) {}
+                audioCtx = null;
+            }
+
+            if (speechSynth) {
+                speechSynth.cancel();
+            }
+        }
+
+        function triggerFullEmergency() {
+            startEmergencySirenAndVoice();
+        }
+
+        function acknowledgeNoticed() {
+            stopEmergencySirenAndVoice();
+            alert('✔ Emergency acknowledged & resolved. "All-Clear" broadcasted across factory network.');
+        }
+
+        function updateVolume(val) {
+            if (gainNode && audioCtx) {
+                gainNode.gain.setValueAtTime(val / 100, audioCtx.currentTime);
+            }
+        }
+
+        function toggleSirenMute() {
+            if (gainNode && audioCtx) {
+                gainNode.gain.setValueAtTime(0, audioCtx.currentTime);
+                alert('Audio muted.');
+            }
+        }
+
+        function openSmsReceiptInspector() {
+            document.getElementById('sms-modal').style.display = 'flex';
+        }
+
+        function closeSmsReceiptInspector() {
+            document.getElementById('sms-modal').style.display = 'none';
+        }
+
+        const aiTips = [
+            "PESO Rule 84: Maintain a strict 60%+ relative humidity in powder mixing bays to neutralize electrostatic discharge risks.",
+            "Always wear anti-static brass footwear and cotton garments when handling potassium nitrate and sulphur.",
+            "Never exceed the licensed maximum room occupancy limit (e.g. max 4 workers per mixing cell in Room 101).",
+            "Perform wet sweeping of explosive dust residues after every shift change to prevent flash-fire escalation."
+        ];
+
+        function refreshDailySafetyTip() {
+            const randomTip = aiTips[Math.floor(Math.random() * aiTips.length)];
+            document.getElementById('ai-safety-tip-text').innerText = `"${randomTip}"`;
+        }
+    </script>
+</body>
+</html>

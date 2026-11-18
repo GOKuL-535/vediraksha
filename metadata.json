@@ -1,0 +1,8 @@
+{
+  "name": "VediRaksha",
+  "description": "Tamil-first safety, chemical limit tracking, biometric shift logging, and tamper-proof wage passbook for fireworks factory workers.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

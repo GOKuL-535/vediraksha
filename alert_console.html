@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Alert Escalation Console - VediRaksha</title>
+  <meta name="claude:viewport-fit-sides" content="cover">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Schibsted+Grotesk:wght@400;500;600;700&display=swap">
+  <style>
+  :root {
+    --bg: #f1f4f6;
+    --surface: #ffffff;
+    --fg: #13202b;
+    --muted: #566877;
+    --line: #d8e0e6;
+    --accent: #0b6e7f;
+    --accent-fg: #ffffff;
+    --ok: #1b7a4b;
+    --warn: #9a5a00;
+    --crit: #bf3028;
+    --font-body: "Schibsted Grotesk", "Segoe UI", system-ui, sans-serif;
+    --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0d1419;
+      --surface: #151e26;
+      --fg: #e5ecf1;
+      --muted: #93a4b2;
+      --line: #26333e;
+      --accent: #4cc0d4;
+      --accent-fg: #06222a;
+      --ok: #4ccb8a;
+      --warn: #e6a23c;
+      --crit: #ff6b5f;
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0d1419;
+    --surface: #151e26;
+    --fg: #e5ecf1;
+    --muted: #93a4b2;
+    --line: #26333e;
+    --accent: #4cc0d4;
+    --accent-fg: #06222a;
+    --ok: #4ccb8a;
+    --warn: #e6a23c;
+    --crit: #ff6b5f;
+    color-scheme: dark;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    background: var(--bg);
+    color: var(--fg);
+    font-family: var(--font-body);
+    font-size: 14px;
+    line-height: 1.45;
+    padding-block: 24px 40px;
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
+  }
+  .wrap { max-width: 1080px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px; }
+
+  header { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; }
+  h1 { margin: 0; font-size: 22px; font-weight: 700; letter-spacing: -0.01em; text-wrap: balance; }
+  .sub { margin: 2px 0 0; color: var(--muted); }
+  .nav-back { color: var(--accent); text-decoration: none; font-weight: 600; margin-bottom: 8px; display: inline-block; }
+
+  .pill {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 6px 12px; border-radius: 999px; border: 1px solid var(--line);
+    background: var(--surface); font-weight: 600; font-size: 13px;
+  }
+  .pill i { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); display: block; }
+  .pill.escalating { color: var(--warn); border-color: color-mix(in srgb, var(--warn) 45%, var(--line)); }
+  .pill.escalating i { background: var(--warn); animation: blink 1s ease-in-out infinite; }
+  .pill.ack, .pill.reached { color: var(--ok); border-color: color-mix(in srgb, var(--ok) 45%, var(--line)); }
+  .pill.ack i, .pill.reached i { background: var(--ok); }
+  .pill.unreachable { color: var(--crit); border-color: color-mix(in srgb, var(--crit) 45%, var(--line)); }
+  .pill.unreachable i { background: var(--crit); }
+
+  .grid { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr); gap: 20px; align-items: start; }
+  .col { display: flex; flex-direction: column; gap: 20px; min-width: 0; }
+  .card { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 18px; min-width: 0; }
+  .card h2 { margin: 0 0 12px; font-size: 12px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+
+  label { display: block; font-weight: 500; font-size: 13px; margin-bottom: 4px; }
+  input[type="text"], input[type="email"], input[type="number"], select {
+    width: 100%; min-width: 0; font: inherit; color: var(--fg); background: var(--bg);
+    border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px;
+  }
+  input[type="number"], .mono { font-family: var(--font-mono); }
+  input:focus-visible, select:focus-visible, button:focus-visible, input[type="checkbox"]:focus-visible {
+    outline: 2px solid var(--accent); outline-offset: 2px;
+  }
+  .hint { margin: 4px 0 0; font-size: 12px; color: var(--muted); }
+  .hint.warn { color: var(--warn); }
+
+  .actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 14px; }
+  button {
+    font: inherit; font-weight: 600; border-radius: 6px; padding: 9px 16px; cursor: pointer;
+    border: 1px solid var(--line); background: var(--surface); color: var(--fg);
+  }
+  button:disabled { opacity: 0.45; cursor: not-allowed; }
+  button.crit { background: var(--crit); border-color: var(--crit); color: #fff; }
+  button.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-fg); }
+
+  .steps { list-style: none; margin: 0; padding: 0; }
+  .step { position: relative; display: grid; grid-template-columns: 28px minmax(0, 1fr); gap: 12px; padding-bottom: 16px; }
+  .step:last-child { padding-bottom: 0; }
+  .step::after { content: ""; position: absolute; left: 13px; top: 30px; bottom: 2px; width: 2px; background: var(--line); }
+  .step:last-child::after { display: none; }
+  .mark {
+    width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center;
+    border: 2px solid var(--line); background: var(--surface); color: var(--muted);
+    font: 500 13px var(--font-mono);
+  }
+  .step.running .mark { border-color: var(--accent); }
+  .step.ok .mark { border-color: var(--ok); color: var(--ok); }
+  .step.fail .mark { border-color: var(--crit); color: var(--crit); }
+  .step.skip .mark { color: var(--muted); }
+  .spin { width: 12px; height: 12px; border-radius: 50%; border: 2px solid var(--accent); border-top-color: transparent; animation: spin 0.8s linear infinite; }
+  .title { font-weight: 600; }
+  .step.pending .title, .step.skip .title { color: var(--muted); }
+  .detail { font-family: var(--font-mono); font-size: 12px; color: var(--muted); overflow-wrap: anywhere; }
+  .step.fail .detail { color: var(--crit); }
+  .step.ok .detail { color: var(--ok); }
+  .bar { height: 4px; border-radius: 2px; background: var(--line); margin-top: 6px; overflow: hidden; }
+  .bar b { display: block; height: 100%; background: var(--warn); }
+
+  .phone { display: flex; gap: 14px; align-items: center; }
+  .handset {
+    position: relative; flex: none; width: 52px; height: 52px; border-radius: 50%;
+    display: grid; place-items: center; background: var(--bg); color: var(--muted); border: 1px solid var(--line);
+  }
+  .handset svg { width: 22px; height: 22px; fill: currentColor; }
+  .handset.ringing { color: var(--warn); border-color: var(--warn); }
+  .handset.ringing::before, .handset.ringing::after {
+    content: ""; position: absolute; inset: -2px; border-radius: 50%; border: 2px solid var(--warn); opacity: 0;
+    animation: ring 1.6s ease-out infinite;
+  }
+  .handset.ringing::after { animation-delay: 0.8s; }
+  .handset.answered { color: var(--ok); border-color: var(--ok); }
+  .handset.missed { color: var(--crit); border-color: var(--crit); }
+  .phone .num { font-family: var(--font-mono); font-size: 16px; font-weight: 500; overflow-wrap: anywhere; }
+  .phone .state { color: var(--muted); font-size: 13px; }
+
+  .fields { display: flex; flex-direction: column; gap: 14px; }
+  .phone-in { display: flex; }
+  .phone-in span {
+    display: grid; place-items: center; padding: 0 10px; border: 1px solid var(--line); border-right: 0;
+    border-radius: 6px 0 0 6px; background: var(--bg); color: var(--muted); font-family: var(--font-mono);
+  }
+  .phone-in input { border-radius: 0 6px 6px 0; }
+  .two { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+  .sep { border: 0; border-top: 1px solid var(--line); margin: 2px 0; }
+  .check { display: flex; align-items: center; gap: 8px; font-weight: 500; font-size: 13px; margin: 0; }
+  .check input { width: 16px; height: 16px; accent-color: var(--accent); margin: 0; }
+  .group-title { font-size: 12px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); margin: 0; }
+
+  .log { list-style: none; margin: 0; padding: 0; max-height: 240px; overflow-y: auto; }
+  .log li { display: grid; grid-template-columns: 74px 62px minmax(0, 1fr); gap: 10px; padding: 6px 0; border-top: 1px solid var(--line); font-size: 13px; align-items: baseline; }
+  .log li:first-child { border-top: 0; }
+  .log time { font-family: var(--font-mono); font-size: 12px; color: var(--muted); }
+  .chip { font: 600 11px var(--font-mono); letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+  .chip.ok { color: var(--ok); } .chip.fail { color: var(--crit); } .chip.warn { color: var(--warn); }
+  .empty { color: var(--muted); margin: 0; }
+
+  .backend-note {
+    background: var(--surface);
+    border: 1px dashed var(--accent);
+    border-radius: 10px;
+    padding: 16px;
+    margin-top: 20px;
+    font-size: 13px;
+    color: var(--muted);
+  }
+  .backend-note h3 {
+    margin: 0 0 6px;
+    color: var(--fg);
+    font-size: 14px;
+  }
+  .backend-note code {
+    font-family: var(--font-mono);
+    color: var(--accent);
+    background: var(--bg);
+    padding: 2px 6px;
+    border-radius: 4px;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @keyframes blink { 50% { opacity: 0.35; } }
+  @keyframes ring { 0% { transform: scale(1); opacity: 0.7; } 100% { transform: scale(1.7); opacity: 0; } }
+  @media (prefers-reduced-motion: reduce) {
+    .spin, .pill.escalating i, .handset.ringing::before, .handset.ringing::after { animation: none; }
+  }
+  @media (max-width: 820px) {
+    .grid { grid-template-columns: minmax(0, 1fr); }
+    .log li { grid-template-columns: 66px 54px minmax(0, 1fr); }
+  }
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div>
+      <a href="index.html" class="nav-back">← Back to VediRaksha Factory Safety Portal</a>
+      <h1>Alert Escalation Console</h1>
+      <p class="sub">Email and SMS first. If nobody acknowledges, the admin gets an automatic call.</p>
+    </div>
+    <div class="pill idle" id="pill" aria-live="polite"><i></i><span id="pillText">Idle</span></div>
+  </header>
+
+  <div class="grid">
+    <div class="col">
+      <section class="card">
+        <h2>Trigger an alert</h2>
+        <label for="alertType">Alert</label>
+        <select id="alertType"></select>
+        <div class="actions">
+          <button class="crit" id="btnTrigger">Trigger alert</button>
+          <button class="primary" id="btnAck" disabled>Acknowledge</button>
+          <button id="btnReset">Reset</button>
+        </div>
+        <p class="hint">Acknowledging at any point stops the escalation. Nothing here sends a real message.</p>
+      </section>
+
+      <section class="card">
+        <h2>Escalation flow</h2>
+        <ol class="steps" id="steps"></ol>
+      </section>
+    </div>
+
+    <div class="col">
+      <section class="card">
+        <h2>Admin phone</h2>
+        <div class="phone">
+          <div class="handset" id="handset" aria-hidden="true">
+            <svg viewBox="0 0 24 24"><path d="M6.6 10.8c1.4 2.8 3.8 5.1 6.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1.1.4 2.3.6 3.6.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1C10.6 21 3 13.4 3 4c0-.6.4-1 1-1h3.5c.6 0 1 .4 1 1 0 1.3.2 2.5.6 3.6.1.3 0 .7-.2 1l-2.3 2.2z"/></svg>
+          </div>
+          <div>
+            <div class="num" id="phoneNum"></div>
+            <div class="state" id="phoneState">Standing by</div>
+          </div>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>Settings</h2>
+        <div class="fields">
+          <div>
+            <label for="email">Admin email</label>
+            <input type="email" id="email" value="admin@example.com" autocomplete="off">
+            <p class="hint warn" id="emailHint" hidden></p>
+          </div>
+          <div>
+            <label for="phone">Admin mobile number</label>
+            <div class="phone-in"><span>+91</span><input type="text" id="phone" value="9500847066" inputmode="numeric" autocomplete="off"></div>
+            <p class="hint warn" id="phoneHint" hidden></p>
+          </div>
+          <div class="two">
+            <div><label for="ack">Wait (s)</label><input type="number" id="ack" value="12" min="3" max="300"></div>
+            <div><label for="retries">Call tries</label><input type="number" id="retries" value="3" min="1" max="5"></div>
+            <div><label for="gap">Gap (s)</label><input type="number" id="gap" value="4" min="1" max="120"></div>
+          </div>
+          <p class="hint" style="margin-top:-6px">Demo timings are short. Production defaults are 120 s wait and 60 s between calls.</p>
+          <hr class="sep">
+          <p class="group-title">Simulate</p>
+          <label class="check" for="emailOk"><input type="checkbox" id="emailOk" checked> Email is delivered</label>
+          <label class="check" for="smsOk"><input type="checkbox" id="smsOk" checked> SMS is delivered</label>
+          <div>
+            <label for="answerOn">Admin answers the call</label>
+            <select id="answerOn">
+              <option value="1">On the 1st try</option>
+              <option value="2" selected>On the 2nd try</option>
+              <option value="3">On the 3rd try</option>
+              <option value="0">Never</option>
+            </select>
+          </div>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <section class="card">
+    <h2>Event log</h2>
+    <ul class="log" id="log"></ul>
+  </section>
+
+  <section class="backend-note">
+    <h3>🔌 How to connect to a real backend</h3>
+    <p>The sending logic is encapsulated inside the <code>sendNotification(channel, recipient, payload)</code> handler. To connect to production:</p>
+    <ul>
+      <li><strong>Email:</strong> Replace the simulated email delay with a POST call to your SendGrid / AWS SES API endpoint (e.g., <code>fetch('/api/v1/alerts/email', { method: 'POST', body: JSON.stringify({...}) })</code>).</li>
+      <li><strong>SMS & Automated Call:</strong> Connect the SMS and automated IVR calling steps to Twilio / Plivo APIs (e.g., <code>twilio.calls.create({ url: '/ivr/alert', to: phone, from: twilioNumber })</code>).</li>
+      <li><strong>Real-time State:</strong> Replace the local state timer with WebSockets or Server-Sent Events (SSE) listening for <code>alert.acknowledged</code> events.</li>
+    </ul>
+  </section>
+</div>
+
+<script>
+(function () {
+  var ALERTS = [
+    { id: 'cpu', title: 'CPU usage above 95%', src: 'web-prod-02' },
+    { id: 'pay', title: 'Payment API returning 5xx errors', src: 'checkout-api' },
+    { id: 'disk', title: 'Disk 92% full on db-primary', src: 'db-primary' },
+    { id: 'lag', title: 'Replica lag over 60 s', src: 'db-replica-1' },
+    { id: 'peso', title: 'Mixing Shed R-101 PESO limit breached (>15kg)', src: 'room-101-sensor' },
+    { id: 'temp', title: 'Chemical Storage Shed R-102 High Heat Warning (>45°C)', src: 'room-102-thermal' }
+  ];
+  var $ = function (s) { return document.querySelector(s); };
+  var runId = 0, acked = false, phase = 'idle', steps = [], logs = [], phoneState = 'idle', pill = 'idle';
+
+  var PILL = { idle: 'Idle', escalating: 'Escalating', ack: 'Acknowledged', reached: 'Reached by call', unreachable: 'Unreachable' };
+
+  function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+  function num(id, lo, hi, def) { var v = parseInt($(id).value, 10); if (isNaN(v)) v = def; return Math.min(hi, Math.max(lo, v)); }
+  function cfg() {
+    return {
+      email: $('#email').value.trim(),
+      phone: $('#phone').value.replace(/\D/g, ''),
+      ack: num('#ack', 3, 300, 12),
+      retries: num('#retries', 1, 5, 3),
+      gap: num('#gap', 1, 120, 4),
+      emailOk: $('#emailOk').checked,
+      smsOk: $('#smsOk').checked,
+      answerOn: parseInt($('#answerOn').value, 10)
+    };
+  }
+  function fmtPhone(d) { return '+91 ' + d.replace(/^(\d{5})(\d+)$/, '$1 $2'); }
+  function clock() { return new Date().toLocaleTimeString([], { hour12: false }); }
+
+  function validate() {
+    var c = cfg(), eh = $('#emailHint'), ph = $('#phoneHint');
+    var badEmail = c.email.length > 0 && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(c.email);
+    eh.hidden = !badEmail; eh.textContent = badEmail ? 'This does not look like an email address.' : '';
+    var msg = '';
+    if (!c.phone.length) msg = 'Enter the admin number.';
+    else if (c.phone.length !== 10) msg = 'Indian mobile numbers have 10 digits. This one has ' + c.phone.length + ', so a real call would fail.';
+    ph.hidden = !msg; ph.textContent = msg;
+  }
+
+  function idleSteps() {
+    var c = cfg();
+    return [
+      { id: 'raised', label: 'Alert raised', detail: 'Starts when an alert fires', status: 'pending' },
+      { id: 'email', label: 'Email', detail: c.email || 'No address set', status: 'pending' },
+      { id: 'sms', label: 'SMS', detail: fmtPhone(c.phone), status: 'pending' },
+      { id: 'wait', label: 'Waiting for acknowledgement', detail: c.ack + ' s window, skipped if email and SMS both fail', status: 'pending' },
+      { id: 'call', label: 'Auto-call', detail: 'Up to ' + c.retries + ' tries, ' + c.gap + ' s apart', status: 'pending' },
+      { id: 'outcome', label: 'Outcome', detail: 'Acknowledged, reached or unreachable', status: 'pending' }
+    ];
+  }
+
+  var GLYPH = { pending: '', ok: '✓', fail: '✕', skip: '–' };
+  function render() {
+    $('#steps').innerHTML = steps.map(function (s) {
+      var mark = s.status === 'running' ? '<span class="spin"></span>' : GLYPH[s.status];
+      var bar = s.progress != null ? '<div class="bar"><b style="width:' + Math.round(s.progress * 100) + '%"></b></div>' : '';
+      return '<li class="step ' + s.status + '"><div class="mark">' + mark + '</div><div><div class="title">' + esc(s.label) +
+        '</div><div class="detail">' + esc(s.detail) + '</div>' + bar + '</div></li>';
+    }).join('');
+
+    var p = $('#pill'); p.className = 'pill ' + pill; $('#pillText').textContent = PILL[pill];
+    var h = $('#handset'); h.className = 'handset' + (phoneState === 'idle' ? '' : ' ' + phoneState);
+    var txt = { idle: 'Standing by', ringing: 'Ringing now', answered: 'Call answered', missed: 'No answer' };
+    $('#phoneState').textContent = txt[phoneState];
+    $('#phoneNum').textContent = fmtPhone(cfg().phone);
+
+    $('#btnTrigger').disabled = phase === 'running' || !cfg().phone.length;
+    $('#btnAck').disabled = phase !== 'running';
+    $('#log').innerHTML = logs.length ? logs.map(function (l) {
+      return '<li><time>' + l.t + '</time><span class="chip ' + l.tone + '">' + l.ch + '</span><span>' + esc(l.msg) + '</span></li>';
+    }).join('') : '<li><p class="empty">Events appear here when an alert fires.</p></li>';
+  }
+  function say(ch, msg, tone) { logs.unshift({ t: clock(), ch: ch, msg: msg, tone: tone || '' }); }
+  function step(id) { return steps.filter(function (s) { return s.id === id; })[0]; }
+  function patch(id, p) { var s = step(id); if (s) for (var k in p) s[k] = p[k]; render(); }
+
+  function wait(ms, my, tick) {
+    return new Promise(function (res) {
+      var t0 = performance.now();
+      var iv = setInterval(function () {
+        if (my !== runId) { clearInterval(iv); return res('cancel'); }
+        if (acked) { clearInterval(iv); return res('acked'); }
+        var el = performance.now() - t0;
+        if (tick) tick(el);
+        if (el >= ms) { clearInterval(iv); res('done'); }
+      }, 100);
+    });
+  }
+
+  function finishAcked() {
+    steps.forEach(function (s) {
+      if (s.id === 'outcome') return;
+      if (s.status === 'pending') { s.status = 'skip'; s.detail = 'Not needed'; }
+      else if (s.status === 'running') { s.status = 'skip'; s.detail = 'Cancelled, admin acknowledged'; delete s.progress; }
+    });
+    var o = step('outcome'); o.status = 'ok'; o.detail = 'Acknowledged by admin';
+    pill = 'ack'; phase = 'done'; phoneState = 'idle'; render();
+  }
+
+  // Centralized sending function for backend interop
+  async function sendNotification(channel, recipient, payload) {
+    // Replace this stub with real API endpoints in production (e.g. SendGrid, Twilio)
+    return new Promise(resolve => setTimeout(resolve, 900));
+  }
+
+  async function start() {
+    if (phase === 'running') return;
+    var c = cfg(), a = ALERTS.filter(function (x) { return x.id === $('#alertType').value; })[0];
+    var my = ++runId; acked = false; phase = 'running'; phoneState = 'idle'; pill = 'escalating';
+    steps = idleSteps().filter(function (s) { return s.id !== 'call'; });
+    patch('raised', { status: 'ok', detail: a.title + ' on ' + a.src });
+    say('alert', a.title + ' on ' + a.src, 'warn');
+
+    var okCount = 0;
+    var channels = [['email', c.emailOk, 'Email', c.email], ['sms', c.smsOk, 'SMS', fmtPhone(c.phone)]];
+    for (var i = 0; i < channels.length; i++) {
+      var ch = channels[i];
+      patch(ch[0], { status: 'running', detail: 'Sending to ' + ch[3] });
+      await sendNotification(ch[2], ch[3], a);
+      if (my !== runId) return;
+      if (acked) return finishAcked();
+      if (ch[1]) { okCount++; patch(ch[0], { status: 'ok', detail: 'Delivered to ' + ch[3] }); say(ch[0], 'Delivered to ' + ch[3], 'ok'); }
+      else { patch(ch[0], { status: 'fail', detail: 'Provider rejected the message' }); say(ch[0], 'Failed to send to ' + ch[3], 'fail'); }
+    }
+
+    if (okCount > 0) {
+      var ms = c.ack * 1000;
+      patch('wait', { status: 'running', detail: c.ack + ' s left', progress: 0 });
+      var r2 = await wait(ms, my, function (el) { patch('wait', { detail: Math.max(0, Math.ceil((ms - el) / 1000)) + ' s left', progress: Math.min(1, el / ms) }); });
+      if (r2 === 'cancel') return;
+      if (r2 === 'acked') { patch('wait', { status: 'ok', detail: 'Acknowledged in time', progress: null }); return finishAcked(); }
+      patch('wait', { status: 'fail', detail: 'No acknowledgement after ' + c.ack + ' s', progress: null });
+      say('alert', 'No acknowledgement, escalating to call', 'warn');
+    } else {
+      patch('wait', { status: 'skip', detail: 'Skipped, email and SMS both failed' });
+      say('alert', 'Email and SMS failed, escalating to call', 'warn');
+    }
+
+    var outcome = steps.length - 1;
+    for (var n = 1; n <= c.retries; n++) {
+      var id = 'call' + n;
+      steps.splice(steps.length - 1, 0, { id: id, label: 'Call ' + n + ' of ' + c.retries, detail: 'Dialing ' + fmtPhone(c.phone), status: 'running' });
+      phoneState = 'ringing'; render(); say('call', 'Dialing ' + fmtPhone(c.phone) + ' (try ' + n + ')', 'warn');
+      var r3 = await wait(3000, my);
+      if (r3 === 'cancel') return;
+      if (r3 === 'acked') return finishAcked();
+      var answered = c.answerOn > 0 && n >= c.answerOn;
+      if (answered) {
+        phoneState = 'answered'; patch(id, { status: 'ok', detail: 'Answered' }); say('call', 'Admin answered', 'ok');
+        patch('outcome', { status: 'ok', detail: 'Admin reached by phone' });
+        pill = 'reached'; phase = 'done'; render(); return;
+      }
+      phoneState = 'missed'; patch(id, { status: 'fail', detail: 'No answer' }); say('call', 'No answer on try ' + n, 'fail');
+      if (n < c.retries) {
+        var gms = c.gap * 1000;
+        var r4 = await wait(gms, my, function (el) { patch(id, { detail: 'No answer, retrying in ' + Math.max(0, Math.ceil((gms - el) / 1000)) + ' s' }); });
+        if (r4 === 'cancel') return;
+        if (r4 === 'acked') return finishAcked();
+        patch(id, { detail: 'No answer' });
+      }
+    }
+    patch('outcome', { status: 'fail', detail: 'Admin unreachable after ' + c.retries + ' calls' });
+    say('alert', 'Admin unreachable after ' + c.retries + ' calls', 'fail');
+    pill = 'unreachable'; phase = 'done'; render();
+  }
+
+  function acknowledge() {
+    if (phase !== 'running') return;
+    acked = true; say('ack', 'Admin acknowledged the alert', 'ok');
+  }
+  function reset() {
+    runId++; acked = false; phase = 'idle'; phoneState = 'idle'; pill = 'idle'; steps = idleSteps(); logs = []; render();
+  }
+
+  $('#alertType').innerHTML = ALERTS.map(function (a) { return '<option value="' + a.id + '">' + esc(a.title) + '</option>'; }).join('');
+  $('#btnTrigger').addEventListener('click', start);
+  $('#btnAck').addEventListener('click', acknowledge);
+  $('#btnReset').addEventListener('click', reset);
+  ['#email', '#phone', '#ack', '#retries', '#gap'].forEach(function (s) {
+    $(s).addEventListener('input', function () { validate(); if (phase === 'idle') steps = idleSteps(); render(); });
+  });
+
+  steps = idleSteps(); validate(); render();
+})();
+</script>
+</body>
+</html>

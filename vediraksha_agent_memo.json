@@ -1,0 +1,55 @@
+{
+  "notes": [
+    {
+      "text": "Maximum occupancy for Mixing Shed R-101 is 5 workers strictly enforced.",
+      "tags": [
+        "capacity",
+        "safety",
+        "room-101"
+      ],
+      "ts": 1791387639.6114376
+    },
+    {
+      "text": "Potassium Chlorate and Sulphur must be stored in separate ventilated rooms.",
+      "tags": [
+        "chemicals",
+        "storage",
+        "compliance"
+      ],
+      "ts": 1791387639.6137125
+    },
+    {
+      "text": "Emergency SOS siren triggers auto-notification and 15-second high-priority alarm.",
+      "tags": [
+        "sos",
+        "emergency",
+        "alarm"
+      ],
+      "ts": 1791387639.6174016
+    },
+    {
+      "text": "Worker shift clock-in requires biometric verification and Tamil wage passbook signing.",
+      "tags": [
+        "biometric",
+        "wages",
+        "tamil"
+      ],
+      "ts": 1791387639.6186707
+    }
+  ],
+  "cache": {
+    "e37bff715b6b487857621a3ec242eb82a072474e5a8c85778e61ba74d3e318e4": {
+      "value": {
+        "chemical": "Potassium Chlorate",
+        "quantity_kg": 45.0,
+        "risk_level": "MODERATE",
+        "precautions": [
+          "Ensure anti-static grounding mats are active.",
+          "Mandatory PPE: Nitrile gloves, safety goggles, cotton apron.",
+          "Fire extinguisher Type ABC must be within 3 meters."
+        ]
+      },
+      "ts": 1791387652.5663738
+    }
+  }
+}
